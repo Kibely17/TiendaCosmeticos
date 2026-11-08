@@ -1,6 +1,6 @@
 # Sistema de Gestion de Tienda de Cosmeticos - API
 
-Tarea 3 de Programacion II: capa de Dominio e Infraestructura.
+Tarea 4 de Programacion II: capa de Servicios.
 
 **Estudiante:** Kibely Altagracia Fulgencio Valdez
 
@@ -39,15 +39,31 @@ TiendaCosmeticos.Infrastructure/      Capa de acceso a datos
     ├── ProductoRepository.cs         Consultas propias de Producto
     └── UnitOfWork.cs                 Agrupa los repositorios y guarda cambios
 
+TiendaCosmeticos.Application/         Capa de servicios (logica de negocio)
+├── Core/ApiResponse.cs               Respuesta estandar de todos los servicios
+├── Dtos/                             DTOs de entrada y de salida
+└── Services/                         Marca, Producto, Cliente y Venta
+
 TiendaCosmeticos.API/                 Capa de presentacion
 ├── Controllers/                      Marcas, Productos, Clientes, Ventas
-├── Models/Dtos/
 └── Program.cs
 ```
 
-Las referencias van en cadena: **API, Infrastructure y Domain**. El API no
-referencia a Domain de forma directa porque ya le llega a traves de
-Infrastructure.
+Las referencias van en cadena: **API, Application, Infrastructure y Domain**.
+Cada proyecto referencia solo al siguiente, porque el resto le llega a traves de
+el.
+
+### Por que una capa de servicios
+
+El API no sabe de donde sale la informacion que entrega: puede venir de la base
+de datos, de un calculo o de un servicio externo. El servicio es el que decide.
+Por eso las validaciones se mudaron del controlador al servicio: hoy el
+controlador solo pide y entrega.
+
+Todos los servicios responden un `ApiResponse<T>`, con las mismas cuatro
+propiedades (`Success`, `Message`, `Data` y `StatusCode`). Asi quien consuma el
+API tiene una sola forma de leer el resultado, sin importar el endpoint al que
+apunte.
 
 ### Por que un repositorio
 
@@ -159,4 +175,5 @@ momento y se descuenta el stock.
 
 La API nunca recibe ni devuelve entidades directamente. Toda entrada llega en un
 DTO de creacion o actualizacion, y toda respuesta se construye mapeando la
-entidad a su DTO de salida.
+entidad a su DTO de salida. Los DTOs viven en la capa de aplicacion, que es
+quien hace ese mapeo; un repositorio devuelve entidades y un servicio nunca.
