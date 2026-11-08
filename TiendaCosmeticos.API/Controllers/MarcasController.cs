@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using TiendaCosmeticos.API.Models.Dtos;
-using TiendaCosmeticos.Domain.Entities;
-using TiendaCosmeticos.Infrastructure.Repositories;
+using TiendaCosmeticos.Application.Dtos;
+using TiendaCosmeticos.Application.Services;
 
 namespace TiendaCosmeticos.API.Controllers
 {
@@ -9,80 +8,50 @@ namespace TiendaCosmeticos.API.Controllers
     [Route("api/[controller]")]
     public class MarcasController : ControllerBase
     {
-        private readonly UnitOfWork _unitOfWork;
+        private readonly MarcaService _marcaService;
 
-        public MarcasController(UnitOfWork unitOfWork)
+        public MarcasController(MarcaService marcaService)
         {
-            _unitOfWork = unitOfWork;
+            _marcaService = marcaService;
         }
 
         [HttpGet]
-        public ActionResult<List<MarcaDTO>> GetAll()
+        public IActionResult GetAll()
         {
-            var marcas = _unitOfWork.Marcas.GetAll();
-            return Ok(marcas.Select(Mapear).ToList());
+            var response = _marcaService.GetAllMarcas();
+            return response.Success ? Ok(response.Data) : BadRequest(response.Message);
         }
 
         [HttpGet("{id}")]
-        public ActionResult<MarcaDTO> GetById(int id)
+        public IActionResult GetById(int id)
         {
-            var marca = _unitOfWork.Marcas.GetById(id);
-            if (marca == null) return NotFound();
-            return Ok(Mapear(marca));
+            var response = _marcaService.GetMarcaById(id);
+            if (response.Success) return Ok(response.Data);
+            return response.StatusCode == 404 ? NotFound(response.Message) : BadRequest(response.Message);
         }
 
         [HttpPost]
-        public ActionResult<MarcaDTO> Create([FromBody] CreateMarcaDTO request)
+        public IActionResult Create([FromBody] CreateMarcaDTO request)
         {
-            if (string.IsNullOrWhiteSpace(request.Nombre))
-                return BadRequest("El nombre de la marca es obligatorio.");
-
-            var nueva = new Marca { Nombre = request.Nombre, Pais = request.Pais };
-
-            _unitOfWork.Marcas.Create(nueva);
-            _unitOfWork.Complete();
-
-            return CreatedAtAction(nameof(GetById), new { id = nueva.Id }, Mapear(nueva));
+            var response = _marcaService.CreateMarca(request);
+            if (!response.Success) return BadRequest(response.Message);
+            return CreatedAtAction(nameof(GetById), new { id = response.Data!.Id }, response.Data);
         }
 
         [HttpPut("{id}")]
         public IActionResult Update(int id, [FromBody] UpdateMarcaDTO request)
         {
-            var marca = _unitOfWork.Marcas.GetById(id);
-            if (marca == null) return NotFound();
-
-            if (string.IsNullOrWhiteSpace(request.Nombre))
-                return BadRequest("El nombre de la marca es obligatorio.");
-
-            marca.Nombre = request.Nombre;
-            marca.Pais = request.Pais;
-
-            _unitOfWork.Marcas.Update(marca);
-            _unitOfWork.Complete();
-
-            return NoContent();
+            var response = _marcaService.UpdateMarca(id, request);
+            if (response.Success) return NoContent();
+            return response.StatusCode == 404 ? NotFound(response.Message) : BadRequest(response.Message);
         }
 
         [HttpDelete("{id}")]
         public IActionResult Delete(int id)
         {
-            var marca = _unitOfWork.Marcas.GetById(id);
-            if (marca == null) return NotFound();
-
-            if (_unitOfWork.Marcas.TieneProductos(id))
-                return BadRequest("No se puede eliminar la marca porque tiene productos asociados.");
-
-            _unitOfWork.Marcas.Delete(marca);
-            _unitOfWork.Complete();
-
-            return NoContent();
+            var response = _marcaService.DeleteMarca(id);
+            if (response.Success) return NoContent();
+            return response.StatusCode == 404 ? NotFound(response.Message) : BadRequest(response.Message);
         }
-
-        private static MarcaDTO Mapear(Marca m) => new MarcaDTO
-        {
-            Id = m.Id,
-            Nombre = m.Nombre,
-            Pais = m.Pais
-        };
     }
 }

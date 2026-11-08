@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using TiendaCosmeticos.Domain.Entities;
 using TiendaCosmeticos.Infrastructure.Context;
 using TiendaCosmeticos.Infrastructure.Repositories;
+using TiendaCosmeticos.Application.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,6 +22,11 @@ builder.Services.AddTransient<GenericRepository<Cliente>>();
 builder.Services.AddTransient<GenericRepository<Venta>>();
 
 builder.Services.AddTransient<UnitOfWork>();
+
+builder.Services.AddTransient<MarcaService>();
+builder.Services.AddTransient<ProductoService>();
+builder.Services.AddTransient<ClienteService>();
+builder.Services.AddTransient<VentaService>();
 
 var app = builder.Build();
 

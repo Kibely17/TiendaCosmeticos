@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using TiendaCosmeticos.API.Models.Dtos;
-using TiendaCosmeticos.Domain.Entities;
-using TiendaCosmeticos.Infrastructure.Repositories;
+using TiendaCosmeticos.Application.Dtos;
+using TiendaCosmeticos.Application.Services;
 
 namespace TiendaCosmeticos.API.Controllers
 {
@@ -9,96 +8,50 @@ namespace TiendaCosmeticos.API.Controllers
     [Route("api/[controller]")]
     public class ClientesController : ControllerBase
     {
-        private readonly UnitOfWork _unitOfWork;
+        private readonly ClienteService _clienteService;
 
-        public ClientesController(UnitOfWork unitOfWork)
+        public ClientesController(ClienteService clienteService)
         {
-            _unitOfWork = unitOfWork;
+            _clienteService = clienteService;
         }
 
         [HttpGet]
-        public ActionResult<List<ClienteDTO>> GetAll()
+        public IActionResult GetAll()
         {
-            var clientes = _unitOfWork.Clientes.GetAll();
-            return Ok(clientes.Select(Mapear).ToList());
+            var response = _clienteService.GetAllClientes();
+            return response.Success ? Ok(response.Data) : BadRequest(response.Message);
         }
 
         [HttpGet("{id}")]
-        public ActionResult<ClienteDTO> GetById(int id)
+        public IActionResult GetById(int id)
         {
-            var cliente = _unitOfWork.Clientes.GetById(id);
-            if (cliente == null) return NotFound();
-            return Ok(Mapear(cliente));
+            var response = _clienteService.GetClienteById(id);
+            if (response.Success) return Ok(response.Data);
+            return response.StatusCode == 404 ? NotFound(response.Message) : BadRequest(response.Message);
         }
 
         [HttpPost]
-        public ActionResult<ClienteDTO> Create([FromBody] CreateClienteDTO request)
+        public IActionResult Create([FromBody] CreateClienteDTO request)
         {
-            if (string.IsNullOrWhiteSpace(request.Nombre))
-                return BadRequest("El nombre del cliente es obligatorio.");
-            if (string.IsNullOrWhiteSpace(request.Apellido))
-                return BadRequest("El apellido del cliente es obligatorio.");
-            if (string.IsNullOrWhiteSpace(request.Cedula))
-                return BadRequest("La cedula del cliente es obligatoria.");
-
-            var nuevo = new Cliente
-            {
-                Nombre = request.Nombre,
-                Apellido = request.Apellido,
-                Cedula = request.Cedula,
-                Telefono = request.Telefono,
-                Correo = request.Correo
-            };
-
-            _unitOfWork.Clientes.Create(nuevo);
-            _unitOfWork.Complete();
-
-            return CreatedAtAction(nameof(GetById), new { id = nuevo.Id }, Mapear(nuevo));
+            var response = _clienteService.CreateCliente(request);
+            if (!response.Success) return BadRequest(response.Message);
+            return CreatedAtAction(nameof(GetById), new { id = response.Data!.Id }, response.Data);
         }
 
         [HttpPut("{id}")]
         public IActionResult Update(int id, [FromBody] UpdateClienteDTO request)
         {
-            var cliente = _unitOfWork.Clientes.GetById(id);
-            if (cliente == null) return NotFound();
-
-            if (string.IsNullOrWhiteSpace(request.Nombre))
-                return BadRequest("El nombre del cliente es obligatorio.");
-            if (string.IsNullOrWhiteSpace(request.Cedula))
-                return BadRequest("La cedula del cliente es obligatoria.");
-
-            cliente.Nombre = request.Nombre;
-            cliente.Apellido = request.Apellido;
-            cliente.Cedula = request.Cedula;
-            cliente.Telefono = request.Telefono;
-            cliente.Correo = request.Correo;
-
-            _unitOfWork.Clientes.Update(cliente);
-            _unitOfWork.Complete();
-
-            return NoContent();
+            var response = _clienteService.UpdateCliente(id, request);
+            if (response.Success) return NoContent();
+            return response.StatusCode == 404 ? NotFound(response.Message) : BadRequest(response.Message);
         }
 
         [HttpDelete("{id}")]
         public IActionResult Delete(int id)
         {
-            var cliente = _unitOfWork.Clientes.GetById(id);
-            if (cliente == null) return NotFound();
-
-            _unitOfWork.Clientes.Delete(cliente);
-            _unitOfWork.Complete();
-
-            return NoContent();
+            var response = _clienteService.DeleteCliente(id);
+            if (response.Success) return NoContent();
+            return response.StatusCode == 404 ? NotFound(response.Message) : BadRequest(response.Message);
         }
-
-        private static ClienteDTO Mapear(Cliente c) => new ClienteDTO
-        {
-            Id = c.Id,
-            Nombre = c.Nombre,
-            Apellido = c.Apellido,
-            Cedula = c.Cedula,
-            Telefono = c.Telefono,
-            Correo = c.Correo
-        };
     }
 }

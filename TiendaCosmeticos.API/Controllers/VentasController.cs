@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using TiendaCosmeticos.API.Models.Dtos;
-using TiendaCosmeticos.Domain.Entities;
-using TiendaCosmeticos.Infrastructure.Repositories;
+using TiendaCosmeticos.Application.Dtos;
+using TiendaCosmeticos.Application.Services;
 
 namespace TiendaCosmeticos.API.Controllers
 {
@@ -9,111 +8,50 @@ namespace TiendaCosmeticos.API.Controllers
     [Route("api/[controller]")]
     public class VentasController : ControllerBase
     {
-        private readonly UnitOfWork _unitOfWork;
+        private readonly VentaService _ventaService;
 
-        public VentasController(UnitOfWork unitOfWork)
+        public VentasController(VentaService ventaService)
         {
-            _unitOfWork = unitOfWork;
+            _ventaService = ventaService;
         }
 
         [HttpGet]
-        public ActionResult<List<VentaDTO>> GetAll()
+        public IActionResult GetAll()
         {
-            var ventas = _unitOfWork.Ventas.GetAll();
-            return Ok(ventas.Select(Mapear).ToList());
+            var response = _ventaService.GetAllVentas();
+            return response.Success ? Ok(response.Data) : BadRequest(response.Message);
         }
 
         [HttpGet("{id}")]
-        public ActionResult<VentaDTO> GetById(int id)
+        public IActionResult GetById(int id)
         {
-            var venta = _unitOfWork.Ventas.GetById(id);
-            if (venta == null) return NotFound();
-            return Ok(Mapear(venta));
+            var response = _ventaService.GetVentaById(id);
+            if (response.Success) return Ok(response.Data);
+            return response.StatusCode == 404 ? NotFound(response.Message) : BadRequest(response.Message);
         }
 
         [HttpPost]
-        public ActionResult<VentaDTO> Create([FromBody] CreateVentaDTO request)
+        public IActionResult Create([FromBody] CreateVentaDTO request)
         {
-            if (request.Cantidad <= 0)
-                return BadRequest("La cantidad debe ser mayor que cero.");
-
-            var cliente = _unitOfWork.Clientes.GetById(request.ClienteId);
-            if (cliente == null) return BadRequest("El cliente indicado no existe.");
-
-            var producto = _unitOfWork.Productos.GetById(request.ProductoId);
-            if (producto == null) return BadRequest("El producto indicado no existe.");
-
-            if (producto.Stock < request.Cantidad)
-                return BadRequest($"Stock insuficiente. Disponible: {producto.Stock}.");
-
-            var venta = new Venta
-            {
-                ClienteId = request.ClienteId,
-                ProductoId = request.ProductoId,
-                Cantidad = request.Cantidad,
-                PrecioUnitario = producto.Precio,
-                Total = producto.Precio * request.Cantidad,
-                Fecha = DateTime.Now
-            };
-
-            producto.Stock -= request.Cantidad;
-
-            _unitOfWork.BeginTransaction();
-            try
-            {
-                _unitOfWork.Ventas.Create(venta);
-                _unitOfWork.Productos.Update(producto);
-                _unitOfWork.Complete();
-                _unitOfWork.CommitTransaction();
-            }
-            catch
-            {
-                _unitOfWork.RollbackTransaction();
-                throw;
-            }
-
-            return CreatedAtAction(nameof(GetById), new { id = venta.Id }, Mapear(venta));
+            var response = _ventaService.CreateVenta(request);
+            if (!response.Success) return BadRequest(response.Message);
+            return CreatedAtAction(nameof(GetById), new { id = response.Data!.Id }, response.Data);
         }
 
         [HttpPut("{id}")]
         public IActionResult Update(int id, [FromBody] UpdateVentaDTO request)
         {
-            var venta = _unitOfWork.Ventas.GetById(id);
-            if (venta == null) return NotFound();
-
-            if (request.Cantidad <= 0)
-                return BadRequest("La cantidad debe ser mayor que cero.");
-
-            venta.Cantidad = request.Cantidad;
-            venta.Total = venta.PrecioUnitario * request.Cantidad;
-
-            _unitOfWork.Ventas.Update(venta);
-            _unitOfWork.Complete();
-
-            return NoContent();
+            var response = _ventaService.UpdateVenta(id, request);
+            if (response.Success) return NoContent();
+            return response.StatusCode == 404 ? NotFound(response.Message) : BadRequest(response.Message);
         }
 
         [HttpDelete("{id}")]
         public IActionResult Delete(int id)
         {
-            var venta = _unitOfWork.Ventas.GetById(id);
-            if (venta == null) return NotFound();
-
-            _unitOfWork.Ventas.Delete(venta);
-            _unitOfWork.Complete();
-
-            return NoContent();
+            var response = _ventaService.DeleteVenta(id);
+            if (response.Success) return NoContent();
+            return response.StatusCode == 404 ? NotFound(response.Message) : BadRequest(response.Message);
         }
-
-        private static VentaDTO Mapear(Venta v) => new VentaDTO
-        {
-            Id = v.Id,
-            ClienteId = v.ClienteId,
-            ProductoId = v.ProductoId,
-            Cantidad = v.Cantidad,
-            PrecioUnitario = v.PrecioUnitario,
-            Total = v.Total,
-            Fecha = v.Fecha
-        };
     }
 }

@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\TiendaCosmeticos.Infrastructure\TiendaCosmeticos.Infrastructure.csproj" />
+    <ProjectReference Include="..\TiendaCosmeticos.Application\TiendaCosmeticos.Application.csproj" />
   </ItemGroup>
 
 </Project>
