@@ -1,25 +1,29 @@
 using Microsoft.EntityFrameworkCore;
-using TiendaCosmeticos.API.Data;
+using TiendaCosmeticos.Domain.Entities;
+using TiendaCosmeticos.Infrastructure.Context;
+using TiendaCosmeticos.Infrastructure.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Registramos el contexto de EF Core indicandole que use SQL Server
-// con la cadena de conexion definida en appsettings.
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 
+builder.Services.AddTransient<MarcaRepository>();
+builder.Services.AddTransient<ProductoRepository>();
+
+builder.Services.AddTransient<GenericRepository<Cliente>>();
+builder.Services.AddTransient<GenericRepository<Venta>>();
+
+builder.Services.AddTransient<UnitOfWork>();
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -27,9 +31,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
 app.MapControllers();
 
 app.Run();

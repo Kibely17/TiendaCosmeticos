@@ -1,141 +1,88 @@
 using Microsoft.AspNetCore.Mvc;
-using TiendaCosmeticos.API.Data;
-using TiendaCosmeticos.API.Entities;
 using TiendaCosmeticos.API.Models.Dtos;
+using TiendaCosmeticos.Domain.Entities;
+using TiendaCosmeticos.Infrastructure.Repositories;
 
 namespace TiendaCosmeticos.API.Controllers
 {
-    /// <summary>
-    /// Controlador de Marcas: expone el CRUD de la entidad Marca.
-    /// Nunca recibe ni devuelve entidades, siempre trabaja contra DTOs.
-    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     public class MarcasController : ControllerBase
     {
-        // Contexto de EF Core inyectado por el contenedor de dependencias.
-        private readonly ApplicationDbContext _context;
+        private readonly UnitOfWork _unitOfWork;
 
-        public MarcasController(ApplicationDbContext context)
+        public MarcasController(UnitOfWork unitOfWork)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
         }
 
-        // GET /api/marcas
         [HttpGet]
         public ActionResult<List<MarcaDTO>> GetAll()
         {
-            var marcas = _context.Marcas.ToList();
-
-            // Mapeo manual de entidades Marca a DTOs MarcaDTO.
-            var marcasDTO = marcas.Select(m => new MarcaDTO
-            {
-                Id = m.Id,
-                Nombre = m.Nombre,
-                Pais = m.Pais
-            }).ToList();
-
-            return Ok(marcasDTO);
+            var marcas = _unitOfWork.Marcas.GetAll();
+            return Ok(marcas.Select(Mapear).ToList());
         }
 
-        // GET /api/marcas/{id}
         [HttpGet("{id}")]
         public ActionResult<MarcaDTO> GetById(int id)
         {
-            var marca = _context.Marcas.Find(id);
-            if (marca == null)
-            {
-                return NotFound();
-            }
-
-            var marcaDTO = new MarcaDTO
-            {
-                Id = marca.Id,
-                Nombre = marca.Nombre,
-                Pais = marca.Pais
-            };
-
-            return Ok(marcaDTO);
+            var marca = _unitOfWork.Marcas.GetById(id);
+            if (marca == null) return NotFound();
+            return Ok(Mapear(marca));
         }
 
-        // POST /api/marcas
         [HttpPost]
         public ActionResult<MarcaDTO> Create([FromBody] CreateMarcaDTO request)
         {
             if (string.IsNullOrWhiteSpace(request.Nombre))
-            {
                 return BadRequest("El nombre de la marca es obligatorio.");
-            }
 
-            // Mapear DTO de entrada a entidad.
-            var nuevaMarca = new Marca
-            {
-                Nombre = request.Nombre,
-                Pais = request.Pais,
-                Created = DateTime.Now
-            };
+            var nueva = new Marca { Nombre = request.Nombre, Pais = request.Pais };
 
-            _context.Marcas.Add(nuevaMarca);
-            _context.SaveChanges();  // Al guardar, la base de datos genera el Id.
+            _unitOfWork.Marcas.Create(nueva);
+            _unitOfWork.Complete();
 
-            // Mapeamos la entidad creada a un DTO de salida para la respuesta.
-            var marcaDTO = new MarcaDTO
-            {
-                Id = nuevaMarca.Id,
-                Nombre = nuevaMarca.Nombre,
-                Pais = nuevaMarca.Pais
-            };
-
-            return CreatedAtAction(nameof(GetById), new { id = nuevaMarca.Id }, marcaDTO);
+            return CreatedAtAction(nameof(GetById), new { id = nueva.Id }, Mapear(nueva));
         }
 
-        // PUT /api/marcas/{id}
         [HttpPut("{id}")]
         public IActionResult Update(int id, [FromBody] UpdateMarcaDTO request)
         {
-            var marca = _context.Marcas.Find(id);
-            if (marca == null)
-            {
-                return NotFound();
-            }
+            var marca = _unitOfWork.Marcas.GetById(id);
+            if (marca == null) return NotFound();
 
             if (string.IsNullOrWhiteSpace(request.Nombre))
-            {
                 return BadRequest("El nombre de la marca es obligatorio.");
-            }
 
-            // Actualizamos solo los campos editables, Created no se toca.
             marca.Nombre = request.Nombre;
             marca.Pais = request.Pais;
-            marca.Updated = DateTime.Now;
 
-            _context.SaveChanges();
+            _unitOfWork.Marcas.Update(marca);
+            _unitOfWork.Complete();
 
             return NoContent();
         }
 
-        // DELETE /api/marcas/{id}
         [HttpDelete("{id}")]
         public IActionResult Delete(int id)
         {
-            var marca = _context.Marcas.Find(id);
-            if (marca == null)
-            {
-                return NotFound();
-            }
+            var marca = _unitOfWork.Marcas.GetById(id);
+            if (marca == null) return NotFound();
 
-            // No podemos borrar una marca que tenga productos asociados,
-            // porque la llave foranea de Productos lo impide.
-            var tieneProductos = _context.Productos.Any(p => p.MarcaId == id);
-            if (tieneProductos)
-            {
+            if (_unitOfWork.Marcas.TieneProductos(id))
                 return BadRequest("No se puede eliminar la marca porque tiene productos asociados.");
-            }
 
-            _context.Marcas.Remove(marca);
-            _context.SaveChanges();
+            _unitOfWork.Marcas.Delete(marca);
+            _unitOfWork.Complete();
 
             return NoContent();
         }
+
+        private static MarcaDTO Mapear(Marca m) => new MarcaDTO
+        {
+            Id = m.Id,
+            Nombre = m.Nombre,
+            Pais = m.Pais
+        };
     }
 }

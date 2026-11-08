@@ -1,161 +1,105 @@
 using Microsoft.AspNetCore.Mvc;
-using TiendaCosmeticos.API.Data;
-using TiendaCosmeticos.API.Entities;
 using TiendaCosmeticos.API.Models.Dtos;
+using TiendaCosmeticos.Domain.Entities;
+using TiendaCosmeticos.Infrastructure.Repositories;
 
 namespace TiendaCosmeticos.API.Controllers
 {
-    /// <summary>
-    /// Controlador de Productos: expone el CRUD de la entidad Producto.
-    /// Cada producto pertenece a una Marca, por eso validamos que la marca exista.
-    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     public class ProductosController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly UnitOfWork _unitOfWork;
 
-        public ProductosController(ApplicationDbContext context)
+        public ProductosController(UnitOfWork unitOfWork)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
         }
 
-        // GET /api/productos
         [HttpGet]
         public ActionResult<List<ProductoDTO>> GetAll()
         {
-            var productos = _context.Productos.ToList();
-
-            var productosDTO = productos.Select(p => new ProductoDTO
-            {
-                Id = p.Id,
-                Nombre = p.Nombre,
-                Precio = p.Precio,
-                Stock = p.Stock,
-                MarcaId = p.MarcaId
-            }).ToList();
-
-            return Ok(productosDTO);
+            var productos = _unitOfWork.Productos.GetAllProductosWithMarca();
+            return Ok(productos.Select(Mapear).ToList());
         }
 
-        // GET /api/productos/{id}
         [HttpGet("{id}")]
         public ActionResult<ProductoDTO> GetById(int id)
         {
-            var producto = _context.Productos.Find(id);
-            if (producto == null)
-            {
-                return NotFound();
-            }
-
-            var productoDTO = new ProductoDTO
-            {
-                Id = producto.Id,
-                Nombre = producto.Nombre,
-                Precio = producto.Precio,
-                Stock = producto.Stock,
-                MarcaId = producto.MarcaId
-            };
-
-            return Ok(productoDTO);
+            var producto = _unitOfWork.Productos.GetById(id);
+            if (producto == null) return NotFound();
+            return Ok(Mapear(producto));
         }
 
-        // POST /api/productos
         [HttpPost]
         public ActionResult<ProductoDTO> Create([FromBody] CreateProductoDTO request)
         {
             if (string.IsNullOrWhiteSpace(request.Nombre))
-            {
                 return BadRequest("El nombre del producto es obligatorio.");
-            }
-
             if (request.Precio <= 0)
-            {
                 return BadRequest("El precio debe ser mayor que cero.");
-            }
+            if (request.Stock < 0)
+                return BadRequest("El stock no puede ser negativo.");
+            if (_unitOfWork.Marcas.GetById(request.MarcaId) == null)
+                return BadRequest("La marca indicada no existe.");
 
-            // Validamos que exista la marca antes de insertar el producto.
-            var existeMarca = _context.Marcas.Any(m => m.Id == request.MarcaId);
-            if (!existeMarca)
-            {
-                return BadRequest($"No existe una Marca con Id = {request.MarcaId}.");
-            }
-
-            var nuevoProducto = new Producto
+            var nuevo = new Producto
             {
                 Nombre = request.Nombre,
                 Precio = request.Precio,
                 Stock = request.Stock,
-                MarcaId = request.MarcaId,
-                Created = DateTime.Now
+                MarcaId = request.MarcaId
             };
 
-            _context.Productos.Add(nuevoProducto);
-            _context.SaveChanges();
+            _unitOfWork.Productos.Create(nuevo);
+            _unitOfWork.Complete();
 
-            var productoDTO = new ProductoDTO
-            {
-                Id = nuevoProducto.Id,
-                Nombre = nuevoProducto.Nombre,
-                Precio = nuevoProducto.Precio,
-                Stock = nuevoProducto.Stock,
-                MarcaId = nuevoProducto.MarcaId
-            };
-
-            return CreatedAtAction(nameof(GetById), new { id = nuevoProducto.Id }, productoDTO);
+            return CreatedAtAction(nameof(GetById), new { id = nuevo.Id }, Mapear(nuevo));
         }
 
-        // PUT /api/productos/{id}
         [HttpPut("{id}")]
         public IActionResult Update(int id, [FromBody] UpdateProductoDTO request)
         {
-            var producto = _context.Productos.Find(id);
-            if (producto == null)
-            {
-                return NotFound();
-            }
+            var producto = _unitOfWork.Productos.GetById(id);
+            if (producto == null) return NotFound();
 
             if (string.IsNullOrWhiteSpace(request.Nombre))
-            {
                 return BadRequest("El nombre del producto es obligatorio.");
-            }
-
             if (request.Precio <= 0)
-            {
                 return BadRequest("El precio debe ser mayor que cero.");
-            }
-
-            var existeMarca = _context.Marcas.Any(m => m.Id == request.MarcaId);
-            if (!existeMarca)
-            {
-                return BadRequest($"No existe una Marca con Id = {request.MarcaId}.");
-            }
+            if (_unitOfWork.Marcas.GetById(request.MarcaId) == null)
+                return BadRequest("La marca indicada no existe.");
 
             producto.Nombre = request.Nombre;
             producto.Precio = request.Precio;
             producto.Stock = request.Stock;
             producto.MarcaId = request.MarcaId;
-            producto.Updated = DateTime.Now;
 
-            _context.SaveChanges();
+            _unitOfWork.Productos.Update(producto);
+            _unitOfWork.Complete();
 
             return NoContent();
         }
 
-        // DELETE /api/productos/{id}
         [HttpDelete("{id}")]
         public IActionResult Delete(int id)
         {
-            var producto = _context.Productos.Find(id);
-            if (producto == null)
-            {
-                return NotFound();
-            }
+            var producto = _unitOfWork.Productos.GetById(id);
+            if (producto == null) return NotFound();
 
-            _context.Productos.Remove(producto);
-            _context.SaveChanges();
+            _unitOfWork.Productos.Delete(producto);
+            _unitOfWork.Complete();
 
             return NoContent();
         }
+
+        private static ProductoDTO Mapear(Producto p) => new ProductoDTO
+        {
+            Id = p.Id,
+            Nombre = p.Nombre,
+            Precio = p.Precio,
+            Stock = p.Stock,
+            MarcaId = p.MarcaId
+        };
     }
 }

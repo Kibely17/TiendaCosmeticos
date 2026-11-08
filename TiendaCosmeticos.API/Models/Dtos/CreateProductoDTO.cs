@@ -1,9 +1,5 @@
 namespace TiendaCosmeticos.API.Models.Dtos
 {
-    /// <summary>
-    /// DTO de entrada para crear un Producto.
-    /// Contiene unicamente los datos que el cliente debe proporcionar.
-    /// </summary>
     public class CreateProductoDTO
     {
         public string Nombre { get; set; } = string.Empty;
