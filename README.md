@@ -1,105 +1,40 @@
-# Tienda de Cosmeticos - API
+# Tienda de Cosmeticos
 
 Tarea 4 de Programacion II.
+Kibely Altagracia Fulgencio Valdez
 
-**Estudiante:** Kibely Altagracia Fulgencio Valdez
+API hecha en ASP.NET Core 8 con Entity Framework y SQL Server.
+Las entidades son Marca, Producto, Cliente y Venta.
 
-## Descripcion
+## Proyectos
 
-API REST para una tienda de cosmeticos, dividida en capas. Maneja cuatro
-entidades: Marca, Producto, Cliente y Venta.
+- TiendaCosmeticos.Domain: las entidades
+- TiendaCosmeticos.Infrastructure: el contexto, las migraciones y los repositorios
+- TiendaCosmeticos.Application: los servicios y los DTOs
+- TiendaCosmeticos.API: los controladores
 
-## Tecnologias
+Las validaciones estan en los servicios. Los servicios devuelven un ApiResponse
+con Success, Message, Data y StatusCode.
 
-- ASP.NET Core 8 Web API
-- Entity Framework Core 8 (Code First)
-- SQL Server 2022
-- Swagger
+## Para correrlo
 
-## Estructura
+Poner la clave de SQL Server en appsettings.Development.json donde dice TU_PASSWORD.
 
-```
-TiendaCosmeticos.Domain/
-  Core/BaseEntity.cs
-  Entities/            Marca, Producto, Cliente, Venta
+Crear la base:
 
-TiendaCosmeticos.Infrastructure/
-  Context/             ApplicationDbContext
-  Migrations/
-  Repositories/        GenericRepository, MarcaRepository,
-                       ProductoRepository, UnitOfWork
+    dotnet ef database update --project TiendaCosmeticos.Infrastructure --startup-project TiendaCosmeticos.API
 
-TiendaCosmeticos.Application/
-  Core/ApiResponse.cs
-  Dtos/
-  Services/            MarcaService, ProductoService,
-                       ClienteService, VentaService
+Levantar el API:
 
-TiendaCosmeticos.API/
-  Controllers/         Marcas, Productos, Clientes, Ventas
-```
-
-Cada proyecto referencia solo al siguiente: API, Application, Infrastructure,
-Domain.
-
-Las validaciones estan en los servicios, no en los controladores. Todos los
-servicios devuelven un `ApiResponse<T>` con las propiedades `Success`,
-`Message`, `Data` y `StatusCode`, y el controlador lo traduce a la respuesta
-HTTP que corresponda.
-
-## Como ejecutar
-
-1. En `TiendaCosmeticos.API/appsettings.Development.json` sustituir
-   `TU_PASSWORD` por la clave de SQL Server.
-
-2. Crear la base de datos:
-
-```bash
-dotnet ef database update --project TiendaCosmeticos.Infrastructure --startup-project TiendaCosmeticos.API
-```
-
-3. Levantar el API:
-
-```bash
-dotnet run --project TiendaCosmeticos.API
-```
-
-Swagger queda en `/swagger`.
+    dotnet run --project TiendaCosmeticos.API
 
 ## Endpoints
 
-Los cuatro recursos (`marcas`, `productos`, `clientes`, `ventas`) tienen el
-mismo CRUD:
+Hay GET, POST, PUT y DELETE para marcas, productos, clientes y ventas.
 
-```
-GET    /api/{recurso}
-GET    /api/{recurso}/{id}
-POST   /api/{recurso}
-PUT    /api/{recurso}/{id}
-DELETE /api/{recurso}/{id}
-```
+    /api/marcas
+    /api/productos
+    /api/clientes
+    /api/ventas
 
-Ejemplo para registrar una venta:
-
-```json
-POST /api/ventas
-{
-  "clienteId": 1,
-  "productoId": 1,
-  "cantidad": 3
-}
-```
-
-El total se calcula con el precio que tenga el producto en ese momento y se
-descuenta el stock. Las dos cosas se guardan en una transaccion.
-
-## Validaciones
-
-- El nombre de la marca, del producto y del cliente son obligatorios.
-- La cedula del cliente es obligatoria y no se repite.
-- El correo debe tener formato valido.
-- El precio debe ser mayor que cero y el stock no puede ser negativo.
-- No se puede crear un producto con una marca que no existe.
-- No se puede eliminar una marca que tenga productos.
-- No se puede eliminar un cliente que tenga ventas.
-- No se puede vender mas unidades de las que hay en stock.
+Cuando se registra una venta se calcula el total y se descuenta el stock del producto.
