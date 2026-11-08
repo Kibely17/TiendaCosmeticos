@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TiendaCosmeticos.Domain", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TiendaCosmeticos.Infrastructure", "TiendaCosmeticos.Infrastructure\TiendaCosmeticos.Infrastructure.csproj", "{4BADC7F3-3CA9-48C4-9763-AA259C1AD4E3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TiendaCosmeticos.Application", "TiendaCosmeticos.Application\TiendaCosmeticos.Application.csproj", "{0156BC22-FDBC-4766-86AE-CFB40FAE13E8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{4BADC7F3-3CA9-48C4-9763-AA259C1AD4E3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4BADC7F3-3CA9-48C4-9763-AA259C1AD4E3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4BADC7F3-3CA9-48C4-9763-AA259C1AD4E3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0156BC22-FDBC-4766-86AE-CFB40FAE13E8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0156BC22-FDBC-4766-86AE-CFB40FAE13E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0156BC22-FDBC-4766-86AE-CFB40FAE13E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0156BC22-FDBC-4766-86AE-CFB40FAE13E8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
